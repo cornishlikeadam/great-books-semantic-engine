@@ -22,6 +22,7 @@ export function AccountDashboard() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [payload, setPayload] = useState<AccountPayload | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -50,6 +51,7 @@ export function AccountDashboard() {
       }
 
       setPayload(json);
+      setActionMessage(null);
     }
 
     void load();
@@ -68,7 +70,20 @@ export function AccountDashboard() {
       }
     });
     const json = await response.json();
+    if (!response.ok) {
+      setActionMessage(json.error || "Could not open the billing portal.");
+      return;
+    }
+
+    setActionMessage(null);
     if (json.url) window.location.href = json.url;
+  }
+
+  async function signOut() {
+    if (!supabase) return;
+
+    await supabase.auth.signOut();
+    window.location.href = "/login";
   }
 
   if (message) {
@@ -91,7 +106,7 @@ export function AccountDashboard() {
       <section className="panel">
         <p className="eyebrow">Account</p>
         <h2>{payload.email}</h2>
-        <p>Plan: {payload.plan}</p>
+        <p>Plan: {formatPlan(payload.plan)}</p>
         <p>Free analyses used: {payload.freeAnalysesUsed}</p>
         <p>Free analyses remaining: {payload.remainingFreeQueries}</p>
         <div className="button-row compact">
@@ -101,7 +116,11 @@ export function AccountDashboard() {
           <button type="button" className="button secondary" onClick={openBillingPortal}>
             Open billing portal
           </button>
+          <button type="button" className="button secondary" onClick={signOut}>
+            Sign out
+          </button>
         </div>
+        {actionMessage ? <div className="status-banner">{actionMessage}</div> : null}
       </section>
 
       <section className="panel">
@@ -113,7 +132,7 @@ export function AccountDashboard() {
                 <strong>{new Date(event.created_at).toLocaleString()}</strong>
                 <p>{event.prompt}</p>
                 <small>
-                  {event.provider_mode} · {event.total_tokens} tokens
+                  {formatProviderMode(event.provider_mode)} · {event.total_tokens} tokens
                 </small>
               </article>
             ))
@@ -124,4 +143,15 @@ export function AccountDashboard() {
       </section>
     </div>
   );
+}
+
+function formatPlan(plan: string) {
+  if (!plan) return "Free";
+  return plan.charAt(0).toUpperCase() + plan.slice(1);
+}
+
+function formatProviderMode(mode: string) {
+  if (mode === "together") return "Together cloud";
+  if (mode === "demo") return "Deterministic fallback";
+  return mode;
 }

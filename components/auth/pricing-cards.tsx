@@ -2,9 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { pricingPlans } from "@/lib/semantic/data";
+import type { PricingPlan } from "@/lib/semantic/types";
 
-export function PricingCards() {
+interface PricingCardsProps {
+  plans: PricingPlan[];
+}
+
+export function PricingCards({ plans }: PricingCardsProps) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -36,13 +40,14 @@ export function PricingCards() {
       return;
     }
 
+    setMessage(null);
     window.location.href = json.url;
   }
 
   return (
     <>
       <div className="card-grid three">
-        {pricingPlans.map((plan) => (
+        {plans.map((plan) => (
           <article key={plan.id} className="panel">
             <p className="eyebrow">{plan.title}</p>
             <h2>{plan.price}</h2>

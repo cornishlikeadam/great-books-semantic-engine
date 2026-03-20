@@ -1,6 +1,9 @@
+import { getDisplayPricingPlans } from "@/lib/billing/pricing";
 import { PricingCards } from "@/components/auth/pricing-cards";
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const pricingPlans = await getDisplayPricingPlans();
+
   return (
     <main className="page-wrap">
       <section className="container">
@@ -10,12 +13,12 @@ export default function PricingPage() {
             <h1>Free first, then metered through subscriptions</h1>
           </div>
           <p className="supporting-copy">
-            The app is set up for a three-analysis free tier after signup. Stripe takes over after
-            that, using product price IDs you configure in the environment.
+            The app includes a three-analysis free tier after signup. Paid plan amounts are pulled
+            live from the Stripe prices currently configured for this production deployment.
           </p>
         </div>
 
-        <PricingCards />
+        <PricingCards plans={pricingPlans} />
       </section>
     </main>
   );

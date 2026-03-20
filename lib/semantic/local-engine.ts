@@ -114,12 +114,13 @@ export function buildLocalAnalysis(prompt: string, focus: Focus, depth: number):
     .sort((left, right) => right.score - left.score)
     .slice(0, depth);
 
+  const usedCounterpartIds = new Set<string>();
   const pairs: PairingResult[] = rankedPrimary.map((entry) => {
     const counterpartPool = passages.filter(
       (passage) => passage.tradition !== entry.passage.tradition
     );
 
-    const counterpart = counterpartPool
+    const rankedCounterparts = counterpartPool
       .map((passage) => ({
         passage,
         score: clamp(
@@ -129,7 +130,15 @@ export function buildLocalAnalysis(prompt: string, focus: Focus, depth: number):
           0.99
         )
       }))
-      .sort((left, right) => right.score - left.score)[0];
+      .sort((left, right) => right.score - left.score);
+
+    const counterpart =
+      rankedCounterparts.find((candidate) => !usedCounterpartIds.has(candidate.passage.id)) ||
+      rankedCounterparts[0];
+
+    if (counterpart) {
+      usedCounterpartIds.add(counterpart.passage.id);
+    }
 
     const sharedConcepts = getSharedConcepts(entry.passage.vector, counterpart.passage.vector);
 
@@ -389,10 +398,19 @@ function buildSummary(prompt: string, focus: Focus, pairs: PairingResult[], metr
     .map((metric) => metric.label.toLowerCase());
 
   const authors = [...new Set(pairs.flatMap((pair) => [pair.primary.author, pair.counterpart.author]))];
+  const leadPair = pairs[0];
+  const focusLabel =
+    focus === "all" ? "cross-canonical retrieval" : `${focus === "western" ? "Western" : "Eastern"} retrieval`;
 
-  return `For the prompt "${prompt}", the ${focus} search emphasized ${joinLabels(
+  if (!leadPair) {
+    return `For the prompt "${prompt}", the engine did not recover any stable comparative bridge.`;
+  }
+
+  return `For "${prompt}", ${focusLabel} leans hardest toward ${joinLabels(
     topMetrics
-  )}. The engine surfaced ${pairs.length} primary/counterpart pairs across ${authors.length} authors.`;
+  )}. The strongest bridge in this run connects ${leadPair.primary.author} with ${
+    leadPair.counterpart.author
+  }, and the engine surfaced ${pairs.length} matched pairs across ${authors.length} authors.`;
 }
 
 function buildDeterministicPairExplanation(
@@ -402,12 +420,18 @@ function buildDeterministicPairExplanation(
 ): string {
   const labels = sharedConcepts.map((concept) => concept.label.toLowerCase());
   if (!labels.length) {
-    return `${primary.author} and ${counterpart.author} occupy adjacent conceptual terrain even when the overlap is diffuse.`;
+    return `${primary.author}'s ${primary.section.toLowerCase()} and ${counterpart.author}'s ${counterpart.section.toLowerCase()} live near one another in the corpus even though the overlap is diffuse. ${primary.author} leans on ${describePassageEmphasis(
+      primary
+    )}, while ${counterpart.author} refracts the same neighborhood through ${describePassageEmphasis(
+      counterpart
+    )}.`;
   }
 
-  return `${primary.author} and ${counterpart.author} cluster around ${joinLabels(
+  return `${primary.author}'s ${primary.section.toLowerCase()} meets ${counterpart.author}'s ${counterpart.section.toLowerCase()} on ${joinLabels(
     labels
-  )}. The pairing stays legible because both passages frame transformation or order through closely related conceptual pressure points.`;
+  )}. ${primary.author} presses the question through ${describePassageEmphasis(
+    primary
+  )}, while ${counterpart.author} answers through ${describePassageEmphasis(counterpart)}.`;
 }
 
 function buildMetricExplanation(metric: MetricDefinition, percentage: number, pairs: PairingResult[]): string {
@@ -423,17 +447,11 @@ function buildMetricExplanation(metric: MetricDefinition, percentage: number, pa
     .map((pair) => `${pair.primary.author}/${pair.counterpart.author}`);
 
   const intensity =
-    percentage >= 24
-      ? "dominant"
-      : percentage >= 16
-        ? "strong"
-        : percentage >= 10
-          ? "present"
-          : "secondary";
+    percentage >= 24 ? "dominates" : percentage >= 16 ? "stands out" : percentage >= 10 ? "stays visible" : "remains secondary";
 
-  return `${metric.label} is ${intensity} in this run because the retrieved pairs repeatedly activate ${
-    metric.description.toLowerCase()
-  }${labels.length ? `, especially in ${joinLabels(labels)}.` : "."}`;
+  return `${metric.label} ${intensity} because the retrieved set keeps returning to ${metric.description.toLowerCase()}${
+    labels.length ? `, most clearly in ${joinLabels(labels)}.` : "."
+  }`;
 }
 
 function estimateTokenCount(text: string): number {
@@ -477,6 +495,22 @@ function extractTokens(text: string): string[] {
 
 function normalize(text: string): string {
   return String(text || "").toLowerCase();
+}
+
+function describePassageEmphasis(passage: PassageRecord) {
+  const keywords = passage.keywords
+    .slice(0, 2)
+    .map((keyword) => keyword.replace(/-/g, " "));
+
+  if (keywords.length === 2) {
+    return `${keywords[0]} and ${keywords[1]}`;
+  }
+
+  if (keywords.length === 1) {
+    return keywords[0];
+  }
+
+  return passage.note.replace(/\.$/, "").toLowerCase();
 }
 
 function mergeWeights(

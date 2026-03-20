@@ -46,6 +46,7 @@ export async function buildAnalysis(prompt: string, focus: Focus, depth: number)
 
     const primary = rankedPrimary.sort((a, b) => b.score - a.score).slice(0, depth);
 
+    const usedCounterpartIds = new Set<string>();
     const pairs: PairingResult[] = [];
     for (const entry of primary) {
       const candidatePool = passages.filter((passage) => passage.tradition !== entry.passage.tradition);
@@ -61,7 +62,12 @@ export async function buildAnalysis(prompt: string, focus: Focus, depth: number)
         })
       );
 
-      const best = candidates.sort((a, b) => b.score - a.score)[0];
+      const rankedCandidates = candidates.sort((a, b) => b.score - a.score);
+      const best =
+        rankedCandidates.find((candidate) => !usedCounterpartIds.has(candidate.passage.id)) ||
+        rankedCandidates[0];
+      usedCounterpartIds.add(best.passage.id);
+
       pairs.push({
         primary: entry.passage,
         primaryScore: clamp(entry.score, 0, 0.99),
@@ -156,6 +162,9 @@ async function getStructuredExplanations(
   pairs: PairingResult[],
   metrics: MetricResult[]
 ): Promise<TogetherChatResult> {
+  const promptSignals = extractPromptSignals(prompt);
+  const authorSet = [...new Set(pairs.flatMap((pair) => [pair.primary.author, pair.counterpart.author]))];
+
   const response = await fetch("https://api.together.xyz/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -164,32 +173,65 @@ async function getStructuredExplanations(
     },
     body: JSON.stringify({
       model: appConfig.togetherChatModel,
-      temperature: 0.2,
+      temperature: 0.45,
+      top_p: 0.9,
       messages: [
         {
           role: "system",
-          content:
-            "You are a comparative philosophy research engine. Return strict JSON only. Keep explanations concise, source-grounded, and avoid claiming traditions are identical."
+          content: [
+            "You are a comparative philosophy research engine writing for academic researchers.",
+            "Return strict JSON only, with no markdown fences or commentary.",
+            "Every pair explanation must sound distinct from the others and must remain grounded in the supplied passages only.",
+            "For each pair explanation, write exactly two sentences: sentence one names the precise conceptual hinge; sentence two names a tension, asymmetry, or limit so the traditions are not collapsed into identity.",
+            "Vary sentence openings across pairs.",
+            "Forbidden phrases: 'cluster around', 'pairing stays legible', 'conceptual pressure points', 'both traditions say', 'similar in many ways'.",
+            "The summary must be two sentences and should restate the user's exact question in a more precise way before naming the most interesting bridge or divergence in the retrieved set.",
+            "Each metric explanation must be one sentence that ties the percentage to named authors or works from this exact retrieval run."
+          ].join(" ")
         },
         {
           role: "user",
           content: JSON.stringify({
             prompt,
+            promptSignals,
+            retrievedAuthors: authorSet,
             pairs: pairs.map((pair) => ({
               key: `${pair.primary.id}::${pair.counterpart.id}`,
-              westernLike: pair.primary.tradition === "western" ? pair.primary : pair.counterpart,
-              easternLike: pair.primary.tradition === "eastern" ? pair.primary : pair.counterpart,
-              sharedConcepts: pair.sharedConcepts.map((concept) => concept.label)
+              primary: {
+                author: pair.primary.author,
+                work: pair.primary.work,
+                section: pair.primary.section,
+                tradition: pair.primary.tradition,
+                original: pair.primary.original || null,
+                translation: pair.primary.translation,
+                note: pair.primary.note,
+                keywords: pair.primary.keywords
+              },
+              counterpart: {
+                author: pair.counterpart.author,
+                work: pair.counterpart.work,
+                section: pair.counterpart.section,
+                tradition: pair.counterpart.tradition,
+                original: pair.counterpart.original || null,
+                translation: pair.counterpart.translation,
+                note: pair.counterpart.note,
+                keywords: pair.counterpart.keywords
+              },
+              primaryScore: Number(pair.primaryScore.toFixed(3)),
+              counterpartScore: Number(pair.counterpartScore.toFixed(3)),
+              sharedConcepts: pair.sharedConcepts.map((concept) => concept.label),
+              fallbackSeed: pair.explanation
             })),
             metrics: metrics.map((metric) => ({
               id: metric.id,
               label: metric.label,
-              percentage: metric.percentage
+              percentage: metric.percentage,
+              description: metric.description
             })),
             format: {
-              summary: "string",
+              summary: "two sentences",
               pairExplanations: {
-                "<pairKey>": "one short paragraph"
+                "<pairKey>": "two sentences"
               },
               metricExplanations: {
                 "<metricId>": "one sentence"
@@ -299,4 +341,16 @@ function parseJsonObject(text: string): Record<string, any> {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function extractPromptSignals(prompt: string) {
+  return Array.from(
+    new Set(
+      prompt
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, " ")
+        .split(/\s+/)
+        .filter((token) => token.length > 3)
+    )
+  ).slice(0, 8);
 }

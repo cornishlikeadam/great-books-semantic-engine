@@ -1,15 +1,17 @@
 import Link from "next/link";
+import { getDisplayPricingPlans } from "@/lib/billing/pricing";
 import { featureFlags } from "@/lib/config";
 import {
   appMeta,
   heroStats,
   presets,
-  pricingPlans,
   productCards
 } from "@/lib/semantic/data";
 import { SemanticWorkbench } from "@/components/semantic/workbench";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const pricingPlans = await getDisplayPricingPlans();
+
   return (
     <main>
       <section className="hero-section">
@@ -37,6 +39,10 @@ export default function HomePage() {
               <div className="status-banner">
                 <span className="pill accent">LLM</span>
                 <p>{featureFlags.togetherEnabled ? "Together cloud inference ready." : "Together key not set yet."}</p>
+              </div>
+              <div className="status-banner">
+                <span className="pill">Billing</span>
+                <p>{featureFlags.stripeEnabled ? "Stripe billing ready." : "Stripe billing not configured yet."}</p>
               </div>
             </div>
 
@@ -98,8 +104,8 @@ export default function HomePage() {
               <h2>Prompt, retrieve, explain, graph</h2>
             </div>
             <p className="supporting-copy">
-              The workbench uses Together when configured and falls back to the local semantic
-              engine while you finish wiring keys and cloud services.
+              The workbench now runs against the live cloud stack when you are signed in, while
+              still preserving a deterministic fallback path for resilience and debugging.
             </p>
           </div>
 
