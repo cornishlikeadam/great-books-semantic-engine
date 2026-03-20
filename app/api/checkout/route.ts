@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { appConfig, featureFlags } from "@/lib/config";
+import { appConfig, featureFlags, resolveAppUrl } from "@/lib/config";
 import { getStripeClient } from "@/lib/billing/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
@@ -48,13 +48,14 @@ export async function POST(request: Request) {
     body.plan === "scholar"
       ? appConfig.stripePriceScholarMonthly
       : appConfig.stripePriceLabMonthly;
+  const appUrl = resolveAppUrl(request);
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appConfig.appUrl}/account?checkout=success`,
-    cancel_url: `${appConfig.appUrl}/pricing?checkout=cancelled`,
+    success_url: `${appUrl}/account?checkout=success`,
+    cancel_url: `${appUrl}/pricing?checkout=cancelled`,
     metadata: {
       userId: user.id,
       plan: body.plan

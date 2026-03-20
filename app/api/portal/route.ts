@@ -1,4 +1,4 @@
-import { featureFlags } from "@/lib/config";
+import { featureFlags, resolveAppUrl } from "@/lib/config";
 import { getStripeClient } from "@/lib/billing/stripe";
 import { getAuthenticatedUserFromRequest, ensureProfile } from "@/lib/usage/service";
 
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
   const session = await stripe.billingPortal.sessions.create({
     customer: profile.stripe_customer_id,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/account`
+    return_url: `${resolveAppUrl(request)}/account`
   });
 
   return Response.json({ url: session.url });
