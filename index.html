@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Great Books Semantic Engine</title>
+    <meta
+      name="description"
+      content="A standalone landing web app and working in-browser prototype for a comparative philosophy semantic search engine spanning Western and Eastern classical texts."
+    >
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="data.js"></script>
+    <script defer src="main.js"></script>
+  </head>
+  <body>
+    <div class="site-shell">
+      <div class="grain"></div>
+
+      <header class="site-header">
+        <div class="header-inner">
+          <a class="brand" href="#top">
+            <span class="brand-mark">GB</span>
+            <span class="brand-copy">
+              <strong>The Great Books Semantic Engine</strong>
+              <span>Comparative philosophy search and knowledge graph</span>
+            </span>
+          </a>
+
+          <button class="nav-toggle" data-nav-toggle aria-expanded="false" aria-controls="site-nav">
+            Menu
+          </button>
+
+          <nav id="site-nav" class="nav-menu" data-nav-menu>
+            <a href="#engine">Engine</a>
+            <a href="#demo">Live Model</a>
+            <a href="#corpus">Corpus</a>
+            <a href="#architecture">Architecture</a>
+            <a href="#use-cases">Use Cases</a>
+          </nav>
+        </div>
+      </header>
+
+      <main id="top">
+        <section class="hero" id="engine">
+          <div class="section-inner hero-grid">
+            <div class="hero-copy">
+              <p class="eyebrow">Comparative philosophy, re-indexed</p>
+              <h1>The Great Books Semantic Engine</h1>
+              <p class="lede">
+                An LLM-powered knowledge graph and semantic search engine for reading Plato,
+                Aristotle, Augustine, Aquinas, and Kant against Confucius, Laozi, the
+                Dhammapada, and the Platform Sutra.
+              </p>
+              <p class="sublede">
+                This prototype demonstrates the interaction model in-browser: semantic query
+                expansion, Mandarin-aware concept matching, and automatic retrieval of Eastern
+                counterparts for Western passages.
+              </p>
+
+              <div class="hero-actions">
+                <a class="button primary" href="#demo">Run the live model</a>
+                <a class="button secondary" href="#architecture">Inspect the system</a>
+              </div>
+
+              <div class="hero-callout">
+                <span class="pill accent">Mandarin-first</span>
+                <p>
+                  Original Wenyan stays visible in the ranking flow so researchers can compare
+                  conceptual nuance instead of flattening everything into translation-only search.
+                </p>
+              </div>
+
+              <div id="hero-stats" class="stat-grid"></div>
+            </div>
+
+            <div class="hero-side">
+              <article class="radar-card">
+                <div class="card-topline">
+                  <span class="pill">Working model</span>
+                  <span class="tiny-label">Standalone prototype</span>
+                </div>
+                <h2>Cross-tradition retrieval that preserves difference</h2>
+                <p>
+                  The engine does not claim Plato and Huineng say the same thing. It finds where
+                  their arguments occupy adjacent conceptual terrain, then returns the texts side
+                  by side with provenance, shared themes, and an auditable pairing score.
+                </p>
+                <div id="signal-strip" class="signal-strip"></div>
+              </article>
+
+              <div class="hero-diagram">
+                <div class="diagram-step">
+                  <strong>1</strong>
+                  <span>Embed concept-rich passages</span>
+                </div>
+                <div class="diagram-step">
+                  <strong>2</strong>
+                  <span>Expand the research question</span>
+                </div>
+                <div class="diagram-step">
+                  <strong>3</strong>
+                  <span>Rank the primary canon</span>
+                </div>
+                <div class="diagram-step">
+                  <strong>4</strong>
+                  <span>Surface cross-canon counterparts</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-inner">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">What the product does</p>
+                <h2>Make comparative philosophy tractable for real research workflows</h2>
+              </div>
+              <p>
+                The product vision is not a quote generator. It is a retrieval system for scholars
+                who need semantically adjacent passages, explicit provenance, and concept-level
+                explanations across languages, traditions, and genres.
+              </p>
+            </div>
+
+            <div id="feature-grid" class="feature-grid"></div>
+          </div>
+        </section>
+
+        <section class="section demo-section" id="demo">
+          <div class="section-inner">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Live model</p>
+                <h2>Query the corpus and inspect the counterpart logic</h2>
+              </div>
+              <p>
+                The browser prototype uses hand-tuned concept vectors to emulate multilingual
+                embedding behavior. The interaction model is the important part: ask a research
+                question, rank a canon, then inspect the matched passages and concept graph.
+              </p>
+            </div>
+
+            <div class="lab-grid">
+              <aside class="lab-panel">
+                <form id="query-form" class="query-form">
+                  <label class="field">
+                    <span>Research question</span>
+                    <textarea
+                      id="query-input"
+                      rows="5"
+                      placeholder="Show me all passages in the Western canon that discuss self-overcoming, and surface their Eastern counterparts."
+                    ></textarea>
+                  </label>
+
+                  <div class="form-row">
+                    <label class="field">
+                      <span>Primary corpus</span>
+                      <select id="focus-select">
+                        <option value="western">Western canon</option>
+                        <option value="eastern">Eastern canon</option>
+                        <option value="all">Both canons</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Result depth</span>
+                      <select id="depth-select">
+                        <option value="3">3 pairs</option>
+                        <option value="4" selected>4 pairs</option>
+                        <option value="5">5 pairs</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div class="preset-block">
+                    <div class="preset-head">
+                      <span>Preset prompts</span>
+                      <button id="random-preset" class="text-button" type="button">
+                        Shuffle prompt
+                      </button>
+                    </div>
+                    <div id="preset-row" class="preset-row"></div>
+                  </div>
+
+                  <div class="form-actions">
+                    <button class="button primary" type="submit">Run semantic search</button>
+                  </div>
+                </form>
+
+                <div class="prototype-note">
+                  <strong>Prototype note:</strong> this in-browser model uses curated concept
+                  embeddings instead of calling a remote LLM or embedding API. It is a faithful
+                  interaction prototype for the product, not the full production backend.
+                </div>
+              </aside>
+
+              <div class="results-panel">
+                <div id="result-summary" class="result-summary"></div>
+                <div id="concept-insights" class="insight-grid"></div>
+                <div id="pair-grid" class="pair-grid"></div>
+              </div>
+            </div>
+
+            <div class="graph-wrap">
+              <div class="graph-header">
+                <div>
+                  <p class="eyebrow">Knowledge graph</p>
+                  <h2>Author neighborhoods and activated concepts</h2>
+                </div>
+                <div id="graph-legend" class="legend"></div>
+              </div>
+
+              <svg
+                id="knowledge-graph"
+                viewBox="0 0 1000 620"
+                role="img"
+                aria-label="Knowledge graph of Western and Eastern canonical authors linked by philosophical concept nodes"
+              ></svg>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="corpus">
+          <div class="section-inner">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Curated corpus</p>
+                <h2>Canonical coverage for the comparative engine</h2>
+              </div>
+              <p>
+                This standalone prototype focuses on a compact, inspectable dataset so the
+                ranking logic remains legible. The production version would expand each work into
+                a far larger passage graph with edition-level metadata and annotation tooling.
+              </p>
+            </div>
+
+            <div class="corpus-grid">
+              <div class="corpus-column">
+                <div class="column-head">
+                  <span class="pill">Western canon</span>
+                  <h3>Greek, Latin, and post-Enlightenment anchors</h3>
+                </div>
+                <div id="western-corpus" class="stack-grid"></div>
+              </div>
+
+              <div class="corpus-column">
+                <div class="column-head">
+                  <span class="pill accent">Eastern canon</span>
+                  <h3>Wenyan, Buddhist, and Daoist anchors</h3>
+                </div>
+                <div id="eastern-corpus" class="stack-grid"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="architecture">
+          <div class="section-inner">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Architecture</p>
+                <h2>How the production system scales beyond this prototype</h2>
+              </div>
+              <p>
+                The long-term build combines multilingual embeddings, a knowledge graph,
+                provenance-aware retrieval, and LLM-generated comparative notes that remain
+                subordinate to the source passages.
+              </p>
+            </div>
+
+            <div id="architecture-grid" class="feature-grid architecture-grid"></div>
+
+            <div class="system-band">
+              <div class="system-copy">
+                <p class="eyebrow">Research workflow</p>
+                <h2>From open-ended question to interpretable parallel</h2>
+                <p>
+                  Each result should return its source, activated concepts, and a ranked
+                  counterpart so scholars can inspect the relation rather than trust an opaque
+                  summary.
+                </p>
+              </div>
+
+              <div id="workflow-strip" class="workflow-strip"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="use-cases">
+          <div class="section-inner">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Research uses</p>
+                <h2>Why this engine matters for academic teams</h2>
+              </div>
+              <p>
+                Comparative philosophy becomes much easier to scope when the system can expose
+                semantically similar passages, preserve original language, and keep the difference
+                between traditions visible instead of collapsing them into generic themes.
+              </p>
+            </div>
+
+            <div id="use-case-grid" class="feature-grid use-case-grid"></div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="footer-inner">
+          <p>
+            The Great Books Semantic Engine · standalone prototype ·
+            <span data-year></span>
+          </p>
+          <p>
+            Dataset includes Plato, Aristotle, Augustine, Aquinas, Kant, the Analects, the
+            Tao Te Ching, the Dhammapada, and the Platform Sutra.
+          </p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
