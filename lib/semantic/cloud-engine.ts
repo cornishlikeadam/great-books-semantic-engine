@@ -1,6 +1,11 @@
 import { appConfig, featureFlags } from "@/lib/config";
 import { metricDefinitions, passages } from "@/lib/semantic/data";
-import { buildGraph, buildLocalAnalysis, buildMetricResults } from "@/lib/semantic/local-engine";
+import {
+  buildGraph,
+  buildLocalAnalysis,
+  buildMetricResults,
+  buildQueryVector
+} from "@/lib/semantic/local-engine";
 import type {
   AnalysisResult,
   Focus,
@@ -78,7 +83,7 @@ export async function buildAnalysis(prompt: string, focus: Focus, depth: number)
       });
     }
 
-    const metricEmbeddingResults = await buildMetricPercentages(queryEmbedding, pairs);
+    const metricEmbeddingResults = await buildMetricPercentages(prompt, queryEmbedding, pairs);
     const graph = buildGraph(metricEmbeddingResults, pairs);
     const chatResult = await getStructuredExplanations(prompt, pairs, metricEmbeddingResults);
 
@@ -125,6 +130,7 @@ export async function buildAnalysis(prompt: string, focus: Focus, depth: number)
 }
 
 async function buildMetricPercentages(
+  prompt: string,
   queryEmbedding: number[],
   pairs: PairingResult[]
 ): Promise<MetricResult[]> {
@@ -133,10 +139,15 @@ async function buildMetricPercentages(
   );
   const aggregate = averageEmbeddings([queryEmbedding, ...pairEmbeddings]);
 
+  const localMetricFallback = buildMetricResults(buildQueryVector(prompt).vector, pairs);
+  const localMetricById = new Map(localMetricFallback.map((metric) => [metric.id, metric]));
+
   const raw = await Promise.all(
     metricDefinitions.map(async (metric) => ({
       metric,
-      value: cosineSimilarity(aggregate, await getMetricEmbedding(metric.prompt))
+      value:
+        Math.max(cosineSimilarity(aggregate, await getMetricEmbedding(metric.prompt)), 0.0001) * 0.4 +
+        ((localMetricById.get(metric.id)?.percentage || 0) / 100) * 0.6
     }))
   );
 
@@ -144,8 +155,6 @@ async function buildMetricPercentages(
   const percentages = raw.map((entry) => Math.round((Math.max(entry.value, 0.0001) / total) * 100));
   const delta = 100 - percentages.reduce((sum, value) => sum + value, 0);
   if (percentages.length) percentages[0] += delta;
-
-  const localMetricFallback = buildMetricResults({}, pairs);
 
   return raw.map((entry, index) => ({
     id: entry.metric.id,
